@@ -9,6 +9,8 @@ import logging.handlers
 import requests
 import bcrypt
 from cryptography.fernet import Fernet
+import random
+import string
 
 CONFIG_FILE = os.path.abspath(os.path.dirname(__file__))+"/cloud-cache-clean.conf"
 PASSWORD_FILE = os.path.abspath(os.path.dirname(__file__))+"/user-pass.conf"
@@ -21,50 +23,18 @@ TELEGRAM_TOKEN = ""
 TELEGRAM_CHATID = ""
 LOG_FILE = ""
 CF_ACCOUNTS = []
-application = Flask(__name__)
-
-def load_config():
-    error = 0
-    #Check if config file exists. If not - generate the new one.
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r',encoding='utf8') as file:
-            config = json.load(file)
-        #Check if all parameters are set. If not - shows the error message
-        for id,key in enumerate(config.keys()):
-            if not config.get(key):
-                print(f"Parameter {key} is not defined!")
-                error+=1
-        if error != 0:
-            print(f"Some variables are not set in config file. Please fix it then run the program again.")
-            quit()
-        global TELEGRAM_TOKEN
-        global TELEGRAM_CHATID
-        global LOG_FILE
-        global CF_ACCOUNTS
-        global COOKIE_SALT
-        global CRYPT_KEY
-        TELEGRAM_TOKEN = config.get('telegramToken')
-        TELEGRAM_CHATID = config.get('telegramChat')
-        LOG_FILE = config.get('logFile')
-        COOKIE_SALT = config.get('cookie_salt')
-        CRYPT_KEY = config.get('crypt_key')
-        CF_ACCOUNTS = config.get('CFaccounts', [])
-        logging.basicConfig(filename=LOG_FILE,level=logging.INFO,format='%(asctime)s - Cloud-cache-clean - %(levelname)s - %(message)s',datefmt='%d-%m-%Y %H:%M:%S')
-    else:
-        generate_default_config()
-    #Check if user/password file exists. If not - generate the new one.
-    if os.path.exists(PASSWORD_FILE):
-        with open(PASSWORD_FILE, 'r',encoding='utf8') as file:
-            global PWD_LIST
-            PWD_LIST = json.load(file)
-    else:
-        generate_default_config2()
 
 def generate_default_config():
-    config1 = {
+    length = 16
+    characters = string.ascii_letters + string.digits
+    cookie_salt = ''.join(random.choice(characters) for _ in range(length))
+    key = Fernet.generate_key()
+    config1 =  {
         "telegramToken": "",
         "telegramChat": "",
-        "logFile": "/var/log/cloud-cache-clean.log",
+        "logFile": "cloud-cache-clean.log",
+        "cookie_salt": f"{cookie_salt}",
+        "crypt_key": f"{key}",
         "CFaccounts": [
         {
             "Token": "111111111",
@@ -113,6 +83,39 @@ def send_to_telegram(subject,message):
     if response.status_code != 200:
         err = response.json()
         logging.error(f"Error while sending message to Telegram: {err}")
+
+#main initialization phase starts here
+error = 0
+#Check if config file exists. If not - generate the new one.
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, 'r',encoding='utf8') as file:
+        config = json.load(file)
+    #Check if all parameters are set. If not - shows the error message
+    for id,key in enumerate(config.keys()):
+        if not config.get(key):
+            print(f"Parameter {key} is not defined!")
+            error+=1
+    if error != 0:
+        print(f"Some variables are not set in config file. Please fix it then run the program again.")
+        quit()
+    TELEGRAM_TOKEN = config.get('telegramToken')
+    TELEGRAM_CHATID = config.get('telegramChat')
+    LOG_FILE = config.get('logFile')
+    COOKIE_SALT = config.get('cookie_salt')
+    #removing "b'" at start and "'" at the end of the key string
+    CRYPT_KEY = config.get('crypt_key')[2:-1]
+    CF_ACCOUNTS = config.get('CFaccounts', [])
+    logging.basicConfig(filename=LOG_FILE,level=logging.INFO,format='%(asctime)s - Cloud-cache-clean - %(levelname)s - %(message)s',datefmt='%d-%m-%Y %H:%M:%S')
+else:
+    generate_default_config()
+#Check if user/password file exists. If not - generate the new one.
+if os.path.exists(PASSWORD_FILE):
+    with open(PASSWORD_FILE, 'r',encoding='utf8') as file:
+        PWD_LIST = json.load(file)
+else:
+    generate_default_config2()
+
+application = Flask(__name__)
 
 #catch logout form. Deleting cookies and redirect to /
 @application.route("/logout", methods=['POST'])
@@ -196,7 +199,6 @@ def login():
     
 @application.route("/", methods=['GET'])
 def index():
-    load_config()
     if request.cookies.get("SESSID") and request.cookies.get("realname") and request.cookies.get("username"):
         #searching for the given user in the list
         for id,user in enumerate(PWD_LIST.keys()):
@@ -304,4 +306,4 @@ if __name__ == "__main__":
         else:
             print(f"Something went wrong. Please check the parameters.")
             quit()
-    load_config()
+    application.run()
