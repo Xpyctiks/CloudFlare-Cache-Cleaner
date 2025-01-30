@@ -1,0 +1,20 @@
+{
+   "listeners": {
+     "127.0.0.1:8880": {
+       "pass": "applications/cloud-cache-clean"
+     }
+   },
+  "applications": {
+    "cloud-cache-clean": {
+      "type": "python 3.11",
+      "processes": 4,
+      "user": "www-data",
+      "group": "www-data",
+      "working_directory": "/opt/CloudFlare-Cache-Cleaner",
+      "home": "/opt/CloudFlare-Cache-Cleaner",
+      "path": "/opt/CloudFlare-Cache-Cleaner",
+      "module": "cloud-cache-clean",
+      "callable": "application"
+    }
+  }
+}
