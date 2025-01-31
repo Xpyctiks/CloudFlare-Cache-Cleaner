@@ -11,6 +11,7 @@ import bcrypt
 from cryptography.fernet import Fernet
 import random
 import string
+import signal
 
 CONFIG_FILE = os.path.abspath(os.path.dirname(__file__))+"/cloud-cache-clean.conf"
 PASSWORD_FILE = os.path.abspath(os.path.dirname(__file__))+"/user-pass.conf"
@@ -18,11 +19,8 @@ PASSWORD_FILE = os.path.abspath(os.path.dirname(__file__))+"/user-pass.conf"
 COOKIE_SALT = ""
 #key to ecnrypt API token in <hidden> filed to easy process of purge method
 CRYPT_KEY = b""
-PWD_LIST = []
-TELEGRAM_TOKEN = ""
-TELEGRAM_CHATID = ""
-LOG_FILE = ""
-CF_ACCOUNTS = []
+PWD_LIST = CF_ACCOUNTS = []
+TELEGRAM_TOKEN = TELEGRAM_CHATID = LOG_FILE = ""
 
 def generate_default_config():
     length = 16
@@ -84,37 +82,44 @@ def send_to_telegram(subject,message):
         err = response.json()
         logging.error(f"Error while sending message to Telegram: {err}")
 
-#main initialization phase starts here
-error = 0
-#Check if config file exists. If not - generate the new one.
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r',encoding='utf8') as file:
-        config = json.load(file)
-    #Check if all parameters are set. If not - shows the error message
-    for id,key in enumerate(config.keys()):
-        if not config.get(key):
-            print(f"Parameter {key} is not defined!")
-            error+=1
-    if error != 0:
-        print(f"Some variables are not set in config file. Please fix it then run the program again.")
-        quit()
-    TELEGRAM_TOKEN = config.get('telegramToken')
-    TELEGRAM_CHATID = config.get('telegramChat')
-    LOG_FILE = config.get('logFile')
-    COOKIE_SALT = config.get('cookie_salt')
-    #removing "b'" at start and "'" at the end of the key string
-    CRYPT_KEY = config.get('crypt_key')[2:-1]
-    CF_ACCOUNTS = config.get('CFaccounts', [])
-    logging.basicConfig(filename=LOG_FILE,level=logging.INFO,format='%(asctime)s - Cloud-cache-clean - %(levelname)s - %(message)s',datefmt='%d-%m-%Y %H:%M:%S')
-else:
-    generate_default_config()
-#Check if user/password file exists. If not - generate the new one.
-if os.path.exists(PASSWORD_FILE):
-    with open(PASSWORD_FILE, 'r',encoding='utf8') as file:
-        PWD_LIST = json.load(file)
-else:
-    generate_default_config2()
+def load_config():
+    #main initialization phase starts here
+    error = 0
+    global TELEGRAM_TOKEN, TELEGRAM_CHATID, LOG_FILE, COOKIE_SALT, CRYPT_KEY, CF_ACCOUNTS, PWD_LIST
+    #Check if config file exists. If not - generate the new one.
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r',encoding='utf8') as file:
+            config = json.load(file)
+        #Check if all parameters are set. If not - shows the error message
+        for id,key in enumerate(config.keys()):
+            if not config.get(key):
+                print(f"Parameter {key} is not defined!")
+                error+=1
+        if error != 0:
+            print(f"Some variables are not set in config file. Please fix it then run the program again.")
+            quit()
+        TELEGRAM_TOKEN = config.get('telegramToken')
+        TELEGRAM_CHATID = config.get('telegramChat')
+        LOG_FILE = config.get('logFile')
+        COOKIE_SALT = config.get('cookie_salt')
+        #removing "b'" at start and "'" at the end of the key string
+        CRYPT_KEY = config.get('crypt_key')[2:-1]
+        CF_ACCOUNTS = config.get('CFaccounts', [])
+        logging.basicConfig(filename=LOG_FILE,level=logging.INFO,format='%(asctime)s - Cloud-cache-clean - %(levelname)s - %(message)s',datefmt='%d-%m-%Y %H:%M:%S')
+    else:
+        generate_default_config()
+    #Check if user/password file exists. If not - generate the new one.
+    if os.path.exists(PASSWORD_FILE):
+        with open(PASSWORD_FILE, 'r',encoding='utf8') as file:
+            PWD_LIST = json.load(file)
+    else:
+        generate_default_config2()
 
+def reload_config(signum, frame):
+    logging.info("SIGHUP received. Reloading configuration...")
+
+load_config()
+signal.signal(signal.SIGHUP, reload_config)
 application = Flask(__name__)
 
 #catch logout form. Deleting cookies and redirect to /
@@ -246,9 +251,7 @@ def index2(realname,result):
                             nameserver2 = i['name_servers'][1]
                         if i['status'] != "active":
                             table += f"""\n<tr>\n<th scope="row" class="table-danger">{id}</th>
-                            <td class="table-danger"><form method="post" action="/purge"><button type="submit" value="{i['name']}" name="purge" class="btn btn-primary">Purge Cache</button>
-                            <input type="hidden" name="zoneid" value="{i['id']}">
-                            <input type="hidden" name="hash" value="{hash}"></form></td>
+                            <td class="table-danger"></td>
                             <td class="table-danger">{i['name']}</td>
                             <td class="table-danger">{i['status']}</td>
                             <td class="table-danger">{nameserver1}, {nameserver2}</td>
