@@ -28,7 +28,15 @@
         <div class="spinner-border text-primary" role="status" style="margin-left: 190px; margin-top: 15px; visibility: hidden;" id="spinner">
             <span class="visually-hidden">Loading...</span>
         </div>
-        {{loginError|safe}}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class=flashes>
+        {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
     </div>
     <script>
     function showLoading() {
