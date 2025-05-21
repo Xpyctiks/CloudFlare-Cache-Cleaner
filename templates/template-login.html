@@ -26,11 +26,13 @@
         <button style="margin-left: 170px;" type="submit" id="login" name="login" class="btn btn-primary" onclick="showLoading()">Log In</button>
         </form>
         <div class="spinner-border text-primary" role="status" style="margin-left: 190px; margin-top: 15px; visibility: hidden;" id="spinner">
-            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div id="spinner2" style="visibility: hidden">
+	        Loading a lot of accounts. Gonna take a while
         </div>
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <ul class=flashes>
+        <ul class=flashes id="messages">
         {% for category, message in messages %}
             <li class="{{ category }}">{{ message }}</li>
         {% endfor %}
@@ -41,10 +43,8 @@
     <script>
     function showLoading() {
         document.getElementById("spinner").style.visibility = "visible";
-    }
-    function deleteLoading() {
-        document.getElementById("spinnerLoading").className = "spinner-border text-danger";
-        document.getElementById("spinnerLoading").style.visibility = "visible";
+        document.getElementById("spinner2").style.visibility = "visible";
+        document.getElementById("message").remove();
     }
     </script>
 </main>

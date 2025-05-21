@@ -11,7 +11,7 @@ Python web script to make it easier to purge CloudFlare cache for many accounts 
 -Any uwSGI server.  
 -Python packages: bcrypt, flask, cryptography, requests, httpx
 
--UWSGI server config example:  
+# UWSGI server config example:  
 ```
 [uwsgi]
 module = cloud-cache-clean:application
@@ -30,7 +30,7 @@ plugins = python311
 virtualenv = /usr/local/
 logto = /var/log/uwsgi.log
 ```  
--Nginx Unit config example(nginx-unit-config.json file):
+# Nginx Unit config example(nginx-unit-config.json file):
 ```
 {
    "listeners": {
@@ -59,4 +59,42 @@ and command to push it(bash script file):
 #!/bin/env bash  
   
 curl -X PUT --data-binary @nginx-unit-config.json --unix-socket /var/run/control.unit.sock http://localhost/config  
+```  
+# Gunicorn settings  
+-Systemd unit (for example: /etc/systemd/system/gunicorn-cloud-cache-clean.service). Change to yours:
 ```
+[Unit]
+Description=Gunicorn instance for cloud-cache-clean.py
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/CloudFlare-Cache-Cleaner
+Environment="PATH=/usr/local/bin"
+ExecStart=/usr/bin/gunicorn -c /opt/CloudFlare-Cache-Cleaner/gunicorn_config.py cloud_cache_clean:application
+StandardOutput=append:/var/log/gunicorn/cloud-cache-clean.log
+StandardError=append:/var/log/gunicorn/cloud-cache-clean-error.log
+
+[Install]
+WantedBy=multi-user.target
+```
+-Gunicorn file(gunicorn_config.py).Change to yours if anything:  
+```
+import sys
+import os
+
+#change to yours
+venv_path = "/usr/local/"
+sys.path.insert(0, os.path.join(venv_path, "lib/python3.11/site-packages"))
+#change to yours
+sys.path.insert(0, "/opt/CloudFlare-Cache-Cleaner")
+
+bind = "127.0.0.1:8880"
+workers = 3
+timeout = 30
+loglevel = "info"
+wsgi_app = "cloud_cache_clean:application"
+
+```
+  

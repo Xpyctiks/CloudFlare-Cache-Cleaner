@@ -17,13 +17,15 @@
     <a class="navbar-brand" href="/">Here you can easily purge CloudFlare cache for any available account:</a>
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-    <ul class=flashes style="margin-top: 33px;">
+    <ul class=flashes style="margin-top: 33px;" id="message">
     {% for category, message in messages %}
         <li class="{{ category }}">{{ message }}</li>
     {% endfor %}
     </ul>
     {% endif %}
     {% endwith %}
+    <div class="spinner-border text-primary" role="status" style="margin-top: 15px; visibility: hidden;" id="spinner">
+    </div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -64,9 +66,12 @@
 </table>
 <script>
   function hideLoading() {
-      document.getElementById("spinner").style.visibility = "visible";
+    document.getElementById("spinner").style.visibility = "hidden";
   }
-  {{result|safe}}
+  function showLoading() {
+    document.getElementById("spinner").style.visibility = "visible";
+    document.getElementById("message").remove();
+  }
   </script>
 </main>
 </body>

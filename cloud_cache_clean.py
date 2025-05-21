@@ -256,43 +256,40 @@ def logout():
     flash("You are logged out", "alert alert-info")
     return redirect(url_for("login"),301)
 
-@application.route("/purge", methods=['POST','GET'])
+@application.route("/purge", methods=['POST'])
 @login_required
 def purge():
-    if request.method == 'POST':
-        if request.form['purge'] and request.form['zoneid'] and request.form['hash']:
-            cipher = Fernet(CRYPT_KEY)
-            token = cipher.decrypt(request.form['hash'].encode('utf-8')).decode('utf-8')
-            #if proper record and its token found:
-            try:
-                headers = {
-                    'Authorization': f"Bearer {token}",
-                    'Content-Type':  'application/json'
-                }
-                url = f"https://api.cloudflare.com/client/v4/zones/{request.form['zoneid']}/purge_cache"
-                response = requests.post(url, json={"purge_everything": True}, headers=headers)
-                if response.status_code == 200:
-                    asyncio.run(send_to_telegram("🍀Cloud-Cache-Clean:",f"Cache for {request.form['purge']} purged successfully by {current_user.username}!"))
-                    logging.info(f"CloudFlare cache for {request.form['purge']} purged successfully by {current_user.username}!")
-                    flash(f"Cache for {request.form['purge']} purged successfully.", "alert alert-success")
-                    return redirect("/",301)
-                else:
-                    asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error puring cache for {request.form['purge']} by {current_user.username}!"))
-                    logging.error(f"Error puring cache for {request.form['purge']} by {current_user.username}!")
-                    flash(f"Error purging {request.form['purge']} - some error while purge. See logs.", "alert alert-warning")
-                    return redirect("/",301)
-            except Exception as msg:
-                logging.error(f"Error: Some errors during purging - {request.form['purge']} - {msg}!")
-                asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error: Some errors during purge of {request.form['purge']} by {current_user.username} - {msg}"))
-                flash(f"Purge error: Zone: {request.form['purge']} by {current_user.username} - some error while purge. See logs.", "alert alert-warning")
+    if request.form['purge'] and request.form['zoneid'] and request.form['hash']:
+        cipher = Fernet(CRYPT_KEY)
+        token = cipher.decrypt(request.form['hash'].encode('utf-8')).decode('utf-8')
+        #if proper record and its token found:
+        try:
+            headers = {
+                'Authorization': f"Bearer {token}",
+                'Content-Type':  'application/json'
+            }
+            url = f"https://api.cloudflare.com/client/v4/zones/{request.form['zoneid']}/purge_cache"
+            response = requests.post(url, json={"purge_everything": True}, headers=headers)
+            if response.status_code == 200:
+                asyncio.run(send_to_telegram("🍀Cloud-Cache-Clean:",f"Cache for {request.form['purge']} purged successfully by {current_user.username}!"))
+                logging.info(f"CloudFlare cache for {request.form['purge']} purged successfully by {current_user.username}!")
+                flash(f"Cache for {request.form['purge']} purged successfully.", "alert alert-success")
                 return redirect("/",301)
-        #proper record and its token is not found:
-        else:
-            logging.error(f"Purge error by {current_user.username} - some important values from web form were not sent")
-            asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Purge error by {current_user.username} - some important values from web form were not sent"))
-            flash(f"Purge error: {request.form['purge']} - some important values from web form were not sent", "alert alert-warning")
+            else:
+                asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error puring cache for {request.form['purge']} by {current_user.username}!"))
+                logging.error(f"Error puring cache for {request.form['purge']} by {current_user.username}!")
+                flash(f"Error purging {request.form['purge']} - some error while purge. See logs.", "alert alert-warning")
+                return redirect("/",301)
+        except Exception as msg:
+            logging.error(f"Error: Some errors during purging - {request.form['purge']} - {msg}!")
+            asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error: Some errors during purge of {request.form['purge']} by {current_user.username} - {msg}"))
+            flash(f"Purge error: Zone: {request.form['purge']} by {current_user.username} - some error while purge. See logs.", "alert alert-warning")
             return redirect("/",301)
+    #proper record and its token is not found:
     else:
+        logging.error(f"Purge error by {current_user.username} - some important values from web form were not sent")
+        asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Purge error by {current_user.username} - some important values from web form were not sent"))
+        flash(f"Purge error: {request.form['purge']} - some important values from web form were not sent", "alert alert-warning")
         return redirect("/",301)
 
 #catch login form. Check if user exists in the list and password is correct. If yes - set cookies and redirect to /
@@ -362,7 +359,7 @@ def index():
                             <td class="table-danger">{i['plan']['name']}</td>\n</tr>"""
                         else:
                             table += f"""\n<tr>\n<th scope="row" class="table-success">{id}</th>
-                            <td class="table-success"><form method="post" action="/purge"><button type="submit" value="{i['name']}" name="purge" class="btn btn-primary">Purge Cache</button>
+                            <td class="table-success"><form method="post" action="/purge"><button type="submit" value="{i['name']}" name="purge" onclick="showLoading()" class="btn btn-primary">Purge Cache</button>
                             <input type="hidden" name="zoneid" value="{i['id']}">
                             <input type="hidden" name="hash" value="{hash}"></form></td>
                             <td class="table-success">{i['name']}</td>
@@ -427,7 +424,7 @@ if __name__ == "__main__":
                 print("Error! Enter path to file with CF accounts list")
         elif sys.argv[1] == "cfaccount" and sys.argv[2] == "del":
             if (len(sys.argv) == 4):
-                del_cache(sys.argv[3].strip())
+                del_cfaccount(sys.argv[3].strip())
             else:
                 print("Error! Enter name of CF account entry to delete")
     elif len(sys.argv) <= 2:
