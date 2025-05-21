@@ -6,10 +6,12 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 import os, httpx, asyncio, sys, logging, random, string,requests
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from cryptography.fernet import Fernet
 
 CONFIG_DIR = os.path.join("/etc/",os.path.basename(__file__).split(".py")[0])
 DB_FILE = os.path.join(CONFIG_DIR,os.path.basename(__file__).split(".py")[0]+".db")
 TELEGRAM_TOKEN = TELEGRAM_CHATID = LOG_FILE = ""
+CRYPT_KEY = b""
 application = Flask(__name__)
 application.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + DB_FILE
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -33,6 +35,7 @@ class Settings(db.Model):
     telegramChat = db.Column(db.String(16), nullable=True)
     telegramToken = db.Column(db.String(64), nullable=True)
     logFile = db.Column(db.String(512), nullable=True)
+    sessionKey = db.Column(db.String(64), nullable=True)
     cryptKey = db.Column(db.String(64), nullable=True)
 
 class CFAccounts(db.Model):
@@ -42,13 +45,15 @@ class CFAccounts(db.Model):
     created = db.Column(db.DateTime,default=datetime.now)
 
 def generate_default_config():
-    if not os.path.exists(DB_FILE):
+    if not os.path.isfile(DB_FILE):
         length = 64
         characters = string.ascii_letters + string.digits
-        generated_key = ''.join(random.choice(characters) for _ in range(length))
-        default_settings = Settings(id=1, telegramChat="", telegramToken="", logFile="/var/log/cloud-cache-clean.log", cryptKey=generated_key)
+        session_key = ''.join(random.choice(characters) for _ in range(length))
+        cryptKey = Fernet.generate_key()
+        default_settings = Settings(id=1, telegramChat="", telegramToken="", logFile="/var/log/cloud-cache-clean.log", sessionKey=session_key, cryptKey=cryptKey)
         try:
-            os.mkdir(CONFIG_DIR)
+            if not os.path.exists(CONFIG_DIR):
+                os.mkdir(CONFIG_DIR)
             db.create_all()
             db.session.add(default_settings)
             db.session.commit()
@@ -221,13 +226,14 @@ async def send_to_telegram(subject,message):
 
 def load_config():
     #main initialization phase starts here
-    global TELEGRAM_TOKEN, TELEGRAM_CHATID, LOG_FILE
+    global TELEGRAM_TOKEN, TELEGRAM_CHATID, LOG_FILE, CRYPT_KEY
     try:
         config = db.session.get(Settings, 1)
         TELEGRAM_TOKEN = config.telegramToken
         TELEGRAM_CHATID = config.telegramChat
         LOG_FILE = config.logFile
-        application.secret_key = config.cryptKey
+        CRYPT_KEY = config.cryptKey
+        application.secret_key = config.sessionKey
         try:
             logging.basicConfig(filename=LOG_FILE,level=logging.INFO,format='%(asctime)s - Cloud-cache-clean - %(levelname)s - %(message)s',datefmt='%d-%m-%Y %H:%M:%S')
         except Exception as msg:
@@ -250,44 +256,41 @@ def logout():
     flash("You are logged out", "alert alert-info")
     return redirect(url_for("login"),301)
 
-@application.route("/purge", methods=['POST'])
+@application.route("/purge", methods=['POST','GET'])
+@login_required
 def purge():
     if request.method == 'POST':
-        if request.form['purge']:
-            record = CFAccounts.query.filter_by(accountName=request.form['purge']).first()
-            if record:
-                token = record.accountToken
-                name = record.accountName
-                #if proper record and its token found:
-                try:
-                    headers = {
-                        'Authorization': f"Bearer {token}",
-                        'Content-Type':  'application/json'
-                    }
-                    url = f"https://api.cloudflare.com/client/v4/zones/{request.form['zoneid']}/purge_cache"
-                    response = requests.post(url, json={"purge_everything": True}, headers=headers)
-                    if response.status_code == 200:
-                        asyncio.run(send_to_telegram("🍀Cloud-Cache-Clean:",f"Cache for {request.form['purge']} purged successfully by {current_user.username}!"))
-                        logging.info(f"CloudFlare cache for {request.form['purge']} purged successfully by {current_user.username}!")
-                        flash(f"Cache for {name} purged successfully.", "alert alert-success")
-                        return redirect("/",301)
-                    else:
-                        asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error puring cache for {request.form['purge']} by {current_user.username}!"))
-                        logging.error(f"Error puring cache for {request.form['purge']} by {current_user.username}!")
-                        flash(f"Error purging {name} - some error while purge. See logs.", "alert alert-warning")
-                        return redirect("/",301)
-                except Exception as msg:
-                    logging.error(f"Error: Some errors during purging - {name} - {msg}!")
-                    asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error: Some errors during purge of {name} by {current_user.username} - {msg}"))
-                    flash(f"Purge error: Zone: {name} by {current_user.username} - some error while purge. See logs.", "alert alert-warning")
+        if request.form['purge'] and request.form['zoneid'] and request.form['hash']:
+            cipher = Fernet(CRYPT_KEY)
+            token = cipher.decrypt(request.form['hash'].encode('utf-8')).decode('utf-8')
+            #if proper record and its token found:
+            try:
+                headers = {
+                    'Authorization': f"Bearer {token}",
+                    'Content-Type':  'application/json'
+                }
+                url = f"https://api.cloudflare.com/client/v4/zones/{request.form['zoneid']}/purge_cache"
+                response = requests.post(url, json={"purge_everything": True}, headers=headers)
+                if response.status_code == 200:
+                    asyncio.run(send_to_telegram("🍀Cloud-Cache-Clean:",f"Cache for {request.form['purge']} purged successfully by {current_user.username}!"))
+                    logging.info(f"CloudFlare cache for {request.form['purge']} purged successfully by {current_user.username}!")
+                    flash(f"Cache for {request.form['purge']} purged successfully.", "alert alert-success")
                     return redirect("/",301)
-            #proper record and its token is not found:
-            else:
-                logging.error(f"Purge error by {current_user.username} - record and token of {name} are not found in DB!")
-                asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Purge error by {current_user.username} - record and token of {name} are not found in DB!"))
-                flash(f"Purge error: Purge error by {current_user.username} - record and token of {name} are not found in DB!", "alert alert-warning")
+                else:
+                    asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error puring cache for {request.form['purge']} by {current_user.username}!"))
+                    logging.error(f"Error puring cache for {request.form['purge']} by {current_user.username}!")
+                    flash(f"Error purging {request.form['purge']} - some error while purge. See logs.", "alert alert-warning")
+                    return redirect("/",301)
+            except Exception as msg:
+                logging.error(f"Error: Some errors during purging - {request.form['purge']} - {msg}!")
+                asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Error: Some errors during purge of {request.form['purge']} by {current_user.username} - {msg}"))
+                flash(f"Purge error: Zone: {request.form['purge']} by {current_user.username} - some error while purge. See logs.", "alert alert-warning")
                 return redirect("/",301)
+        #proper record and its token is not found:
         else:
+            logging.error(f"Purge error by {current_user.username} - some important values from web form were not sent")
+            asyncio.run(send_to_telegram("💢Cloud-Cache-Clean:",f"Purge error by {current_user.username} - some important values from web form were not sent"))
+            flash(f"Purge error: {request.form['purge']} - some important values from web form were not sent", "alert alert-warning")
             return redirect("/",301)
     else:
         return redirect("/",301)
@@ -315,8 +318,9 @@ def login():
         return redirect('/',301)
     else:
         return render_template("template-login.html")
-    
+
 @application.route("/", methods=['GET'])
+@login_required
 def index():
     try:
         table = ""
@@ -331,11 +335,13 @@ def index():
         for i, s in enumerate(accounts, 1):
             if s.accountName in permissions_list or "*" in permissions_list:
                 headers = {
-                    'Authorization': f"Bearer {s.token}",
+                    'Authorization': f"Bearer {s.accountToken}",
                     'Content-Type':  'application/json'
                 }
                 url = 'https://api.cloudflare.com/client/v4/zones'
-                response = requests.get(url, headers=headers) 
+                response = requests.get(url, headers=headers)
+                cipher = Fernet(CRYPT_KEY)
+                hash = cipher.encrypt(s.accountToken.encode('utf-8')).decode('utf-8')
                 if response.status_code == 200:
                     for i in response.json()["result"]:
                         if not 'name_servers' in i:
@@ -358,6 +364,7 @@ def index():
                             table += f"""\n<tr>\n<th scope="row" class="table-success">{id}</th>
                             <td class="table-success"><form method="post" action="/purge"><button type="submit" value="{i['name']}" name="purge" class="btn btn-primary">Purge Cache</button>
                             <input type="hidden" name="zoneid" value="{i['id']}">
+                            <input type="hidden" name="hash" value="{hash}"></form></td>
                             <td class="table-success">{i['name']}</td>
                             <td class="table-success">{i['status']}</td>
                             <td class="table-success">{nameserver1}, {nameserver2}</td>
