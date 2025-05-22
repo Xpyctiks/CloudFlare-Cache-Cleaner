@@ -71,7 +71,7 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=/opt/CloudFlare-Cache-Cleaner
-Environment="PATH=/usr/local/bin"
+Environment="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=/usr/bin/gunicorn -c /opt/CloudFlare-Cache-Cleaner/gunicorn_config.py cloud_cache_clean:application
 StandardOutput=append:/var/log/gunicorn/cloud-cache-clean.log
 StandardError=append:/var/log/gunicorn/cloud-cache-clean-error.log
@@ -95,6 +95,5 @@ workers = 3
 timeout = 30
 loglevel = "info"
 wsgi_app = "cloud_cache_clean:application"
-
 ```
   
