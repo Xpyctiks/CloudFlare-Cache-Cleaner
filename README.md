@@ -1,80 +1,26 @@
-# CloudFlare cache purge 
+-Python web application with CLI functions allows to purge CloudFlare sites cache from many accounts at the same page.  
+-Uses sqlite3 DB to store options.  
+-User management and CF accounts management via CLI.  
+-Bulk import of CF accounts from a file in simple format:  
+<<AccountName>> <<Token>>  
+-Sending important alerts and notification to Telegram if ChatID and Token are set.  
 
-Python web script to make it easier to purge CloudFlare cache for many accounts and domains.  
-
--Integrated user management system  
--Logging to Telegram and file  
--Account permissions - you can edit what zones will be available for every user  
-
-# Requirements
-
--Any uwSGI server.  
--Python packages: bcrypt, flask, cryptography, requests, httpx
-
-# UWSGI server config example:  
 ```
-[uwsgi]
-module = cloud-cache-clean:application
-http-socket = 0.0.0.0:8880
-workers = 1
-threads = 2
-http-workers = 4
-chdir = /opt/CloudFlare-Cache-Cleaner
-py-autoreload = 1
-daemonize = /var/log/uwsgi/uwsgi.log
-uid = www-data
-gid = www-data
-pidfile = /var/run/uwsgi.pid
-logto = /var/log/uwsgi/uwsgi-error.log
-plugins = python311
-virtualenv = /usr/local/
-logto = /var/log/uwsgi.log
-```  
-# Nginx Unit config example(nginx-unit-config.json file):
-```
-{
-   "listeners": {
-     "127.0.0.1:8880": {
-       "pass": "applications/cloud-cache-clean"
-     }
-   },
-  "applications": {
-    "cloud-cache-clean": {
-      "type": "python 3.11",
-      "processes": 4,
-      "user": "www-data",
-      "group": "www-data",
-      "working_directory": "/opt/CloudFlare-Cache-Cleaner",
-      "home": "/opt/CloudFlare-Cache-Cleaner",
-      "path": "/opt/CloudFlare-Cache-Cleaner",
-      "module": "cloud-cache-clean",
-      "callable": "application"
-    }
-  }
-}
-```
-  
-and command to push it(bash script file):  
-```
-#!/bin/env bash  
-  
-curl -X PUT --data-binary @nginx-unit-config.json --unix-socket /var/run/control.unit.sock http://localhost/config  
-```  
 # Gunicorn settings  
--Systemd unit (for example: /etc/systemd/system/gunicorn-cloud-cache-clean.service). Change to yours:
+-Systemd unit (for example: /etc/systemd/system/gunicorn-cloudflare-cache-cleaner.service). Change to yours:
 ```
 [Unit]
-Description=Gunicorn instance for cloud-cache-clean.py
+Description=Gunicorn instance for Cloudflare-cache-cleaner.py
 After=network.target
 
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/opt/CloudFlare-Cache-Cleaner
+WorkingDirectory=/opt/Cloudflare-cache-cleaner
 Environment="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/usr/bin/gunicorn -c /opt/CloudFlare-Cache-Cleaner/gunicorn_config.py cloud_cache_clean:application
-StandardOutput=append:/var/log/gunicorn/cloud-cache-clean.log
-StandardError=append:/var/log/gunicorn/cloud-cache-clean-error.log
+ExecStart=/usr/bin/gunicorn -c /opt/Cloudflare-cache-cleaner/gunicorn_config.py Cloudflare_cache_cleaner:application
+StandardOutput=append:/var/log/gunicorn/cloudflare-cache-cleaner.log
+StandardError=append:/var/log/gunicorn/cloudflare-cache-cleaner-error.log
 
 [Install]
 WantedBy=multi-user.target
@@ -88,12 +34,12 @@ import os
 venv_path = "/usr/local/"
 sys.path.insert(0, os.path.join(venv_path, "lib/python3.11/site-packages"))
 #change to yours
-sys.path.insert(0, "/opt/CloudFlare-Cache-Cleaner")
+sys.path.insert(0, "/opt/Cloudflare-cache-cleaner")
 
 bind = "127.0.0.1:8880"
 workers = 3
 timeout = 30
 loglevel = "info"
-wsgi_app = "cloud_cache_clean:application"
+wsgi_app = "cloudflare_cache_cleaner:application"
+
 ```
-  

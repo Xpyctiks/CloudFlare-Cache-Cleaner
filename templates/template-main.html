@@ -15,15 +15,6 @@
 <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
   <div class="container-fluid" style="height: 45px;">
     <a class="navbar-brand" href="/">Here you can easily purge CloudFlare cache for any available account:</a>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <ul class=flashes style="margin-top: 33px;" id="message">
-    {% for category, message in messages %}
-        <li class="{{ category }}">{{ message }}</li>
-    {% endfor %}
-    </ul>
-    {% endif %}
-    {% endwith %}
     <div class="spinner-border text-primary" role="status" style="margin-top: 15px; visibility: hidden;" id="spinner">
     </div>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,7 +31,7 @@
         <span class="spinner-border text-warning" role="status" id="spinnerLoading" style="margin-left: 5px; margin-top: 5px; visibility: hidden;"></span>
       </ul>
       <form class="d-flex" action="/logout" method="POST">
-        <button class="btn btn-outline-warning" type="submit" id="logoutButton" name="logout">{{current_user.username}}&nbsp;Logout</button>
+        <button class="btn btn-outline-warning" type="submit" id="logoutButton" name="logout">{{current_user.realname}}&nbsp;Logout</button>
       </form>
     </div>
   </div>
@@ -64,7 +55,31 @@
 {{table|safe}}
 </tbody>
 </table>
-<script>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="myModalLabel">Information:</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          <ul class=flashes style="margin-top: 33px;" id="message">
+            {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        </div>    
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" autofocus>Got it</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endwith %}
+  <script>
   function hideLoading() {
     document.getElementById("spinner").style.visibility = "hidden";
   }
@@ -72,6 +87,13 @@
     document.getElementById("spinner").style.visibility = "visible";
     document.getElementById("message").remove();
   }
+  document.addEventListener("DOMContentLoaded", function () {
+    const modalElement = document.getElementById("myModal");
+    if (modalElement) {
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+    }
+  });
   </script>
 </main>
 </body>
