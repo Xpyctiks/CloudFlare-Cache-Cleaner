@@ -2,7 +2,7 @@
 -Uses sqlite3 DB to store options.  
 -User management and CF accounts management via CLI.  
 -Bulk import of CF accounts from a file in simple format:  
-<<AccountName>> <<Token>>  
+\<AccountName\> \<Token\>  
 -Sending important alerts and notification to Telegram if ChatID and Token are set.  
 
 # Gunicorn settings  

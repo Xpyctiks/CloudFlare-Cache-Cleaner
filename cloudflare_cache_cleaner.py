@@ -323,13 +323,13 @@ def purge():
         url = f"https://api.cloudflare.com/client/v4/zones/{request.form['zoneid']}/purge_cache"
         response = requests.post(url, json={"purge_everything": True}, headers=headers)
         if response.status_code == 200:
-            asyncio.run(send_to_telegram("🍀Cloudflare-cache-cleaner:",f"CloudFlare cache of {request.form['purge']} purged successfully by {current_user.realname}!"))
+            asyncio.run(send_to_telegram(f"🍀CloudFlare cache of {request.form['purge']} purged successfully by {current_user.realname}!"))
             logging.info(f"CloudFlare cache of {request.form['purge']} purged successfully by {current_user.realname}!")
             response = make_response(redirect("/"),301)
             flash(f"Cache of {request.form['purge']} purged successfully!", "alert alert-success")
             return response
         else:
-            asyncio.run(send_to_telegram("💢Cloudflare-cache-cleaner:",f"Error purging CloudFlare cache for {request.form['purge']} by {current_user.realname}!"))
+            asyncio.run(send_to_telegram(f"💢Error purging CloudFlare cache for {request.form['purge']} by {current_user.realname}!"))
             logging.error(f"Error purging CloudFlare cache for {request.form['purge']} by {current_user.realname}!")
             response = make_response(redirect("/"),301)
             flash(f"{request.form['zoneid']} purge error!", "alert alert-danger")
@@ -357,7 +357,7 @@ def login():
             return response
         else:
             logging.error(f"Login: Wrong password \"{password}\" for user \"{username}\", IP:{request.remote_addr}")
-            asyncio.run(send_to_telegram("🚷Cloudflare-cache-cleaner:",f"Login error.Wrong password for user \"{username}\", IP:{request.remote_addr}"))
+            asyncio.run(send_to_telegram(f"🚷Login error.Wrong password for user \"{username}\", IP:{request.remote_addr}"))
             flash('Wrong username or password!', 'alert alert-danger')
             return render_template("template-login.html")    
     if current_user.is_authenticated:
@@ -522,4 +522,3 @@ if __name__ == "__main__":
 Info: full script should be launched via UWSGI server. In CLI mode use can only use commands above.
 """)
     quit(0)
-
