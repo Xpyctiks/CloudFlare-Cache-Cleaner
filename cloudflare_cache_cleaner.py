@@ -269,7 +269,7 @@ login_manager.init_app(application)
 with application.app_context():
     db.create_all()
 
-async def send_to_telegram(message: str, subject: str = "__name__", ) -> None:
+async def send_to_telegram(message: str, subject: str = os.uname().nodename+"["+os.path.splitext(os.path.basename(__file__))[0]+"]") -> None:
     """Sends messages via Telegram if TELEGRAM_CHATID and TELEGRAM_TOKEN are both set. Requires "message" parameters and can accept "subject" """
     if TELEGRAM_CHATID and TELEGRAM_TOKEN:
         headers = {
