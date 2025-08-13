@@ -2,3 +2,6 @@
 *.local
 *.log
 *.cfg
+*.service
+gunicorn_config.py
+__pycache__

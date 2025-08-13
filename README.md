@@ -5,7 +5,6 @@
 <<AccountName>> <<Token>>  
 -Sending important alerts and notification to Telegram if ChatID and Token are set.  
 
-```
 # Gunicorn settings  
 -Systemd unit (for example: /etc/systemd/system/gunicorn-cloudflare-cache-cleaner.service). Change to yours:
 ```
@@ -37,7 +36,7 @@ sys.path.insert(0, os.path.join(venv_path, "lib/python3.11/site-packages"))
 sys.path.insert(0, "/opt/Cloudflare-cache-cleaner")
 
 bind = "127.0.0.1:8880"
-workers = 3
+workers = 2
 timeout = 30
 loglevel = "info"
 wsgi_app = "cloudflare_cache_cleaner:application"
