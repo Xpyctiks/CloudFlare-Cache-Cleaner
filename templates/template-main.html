@@ -8,93 +8,98 @@
     <link rel="icon" href="templates/favicon.png" type="image/png"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+    <style>
+      #scrollTopBtn {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        z-index: 9999;
+        display: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-size: 22px;
+      }
+      body { 
+       padding-top: 65px;
+      }
+    </style>
 </head>
 <body>
 <main>
 <div>
-<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-  <div class="container-fluid" style="height: 45px;">
-    <a class="navbar-brand" href="/">Here you can easily purge CloudFlare cache for any available account:</a>
-    <div class="spinner-border text-primary" role="status" style="margin-top: 15px; visibility: hidden;" id="spinner">
+  <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center me-auto">
+        <a class="navbar-brand" href="/">Швидка очистка кешу Cloudflare для доменів:</a>
+        <span class="spinner-border text-warning ms-2" role="status" id="spinnerLoading" style="visibility: hidden;"></span>
+      </div>
+      <div class="d-flex align-items-center">
+        <input type="text" id="domainFilter" class="form-control" placeholder="🔍 Фільтр по домену…" autofocus>&nbsp;
+          <select id="accountFilter" class="form-select form-select">
+        </select>
+      </div>
+      <div class="ms-auto d-flex align-items-center">
+        <form action="/logout/" method="POST">
+          <button class="btn btn-outline-warning" type="submit" id="logoutButton" name="logout">🏃{{current_user.realname}}&nbsp;Вихід</button>
+        </form>
+      </div>
     </div>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarCollapse">
-      <ul class="navbar-nav me-auto mb-2 mb-md-0">
-        <li class="nav-item">
-          <a class="nav-link active" id="totalLines" style="color: 0dcaf0;"></a>
-        </li>
-        <li>
-          <a class="nav-link active" id="totalRecords" style="color: 0dcaf0;"></a>
-        </li>
-        <span class="spinner-border text-warning" role="status" id="spinnerLoading" style="margin-left: 5px; margin-top: 5px; visibility: hidden;"></span>
-      </ul>
-      <form class="d-flex" action="/logout" method="POST">
-        <button class="btn btn-outline-warning" type="submit" id="logoutButton" name="logout">{{current_user.realname}}&nbsp;Logout</button>
-      </form>
-    </div>
-  </div>
-</nav>
+  </nav>
 </div>
-<table class="table table-bordered" style="margin-top: 60px; width: 99vw;">
-<thead>
-  <tr class="table-warning">
-    <th scope="col">ID</th>
-    <th scope="col" style="width: 135px;">Actions:</th>
-    <th scope="col">Domain:</th>
-    <th scope="col">Status:</th>
-    <th scope="col">NS servers:</th>
-    <th scope="col">Account:</th>
-    <th scope="col">ZoneID:</th>
-    <th scope="col">Registrator:</th>
-    <th scope="col">Plan:</th>
-  </tr>
-</thead>
-<tbody>
-{{table|safe}}
-</tbody>
-</table>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="myModalLabel">Information:</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-        </div>
-        <div class="modal-body">
-          <ul class=flashes style="margin-top: 33px;" id="message">
-            {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-            {% endfor %}
-          </ul>
-        </div>    
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" autofocus>Got it</button>
-        </div>
+<div class="container-fluid px-2">
+  <div class="table-responsive">
+    <div id="overlayLoader" class="position-fixed d-flex w-100 h-100 justify-content-center align-items-center bg-white bg-opacity-75 d-none" style="z-index: 1050;">
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-2"></div>
+      <div class="fw-semibold">Завантажую {{accounts_count|safe}} аккаунтів…<br>Перший раз капець як довго,але далі буде кеш...</div>
+    </div>
+    </div>
+    <table class="table table-bordered table-hover">
+    <thead>
+      <tr class="table-warning">
+        <th scope="col" style="width: 3%;">ID</th>
+        <th scope="col" style="width: 3%">Дії:</th>
+        <th scope="col">Домен:</th>
+        <th scope="col" style="width: 5%;">Статус:</th>
+        <th scope="col" style="width: 10%;">NS сервери:</th>
+        <th scope="col">Аккаунт:</th>
+        <th scope="col" style="width: 10%;">ZoneID:</th>
+        <th scope="col" style="width: 15%;">Регістратор:</th>
+        <th scope="col" style="width: 7%;">Тариф:</th>
+      </tr>
+    </thead>
+    <tbody id="domainsTableBody">
+    </tbody>
+    </table>
+  </div>
+</div>
+<button id="scrollTopBtn" class="btn btn-dark shadow">↑</button>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="myModalLabel">Information:</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body">
+        <ul class=flashes style="margin-top: 33px;" id="message">
+          {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      </div>    
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" autofocus>Got it</button>
       </div>
     </div>
   </div>
-  {% endif %}
-  {% endwith %}
-  <script>
-  function hideLoading() {
-    document.getElementById("spinner").style.visibility = "hidden";
-  }
-  function showLoading() {
-    document.getElementById("spinner").style.visibility = "visible";
-    document.getElementById("message").remove();
-  }
-  document.addEventListener("DOMContentLoaded", function () {
-    const modalElement = document.getElementById("myModal");
-    if (modalElement) {
-      const modal = new bootstrap.Modal(modalElement);
-      modal.show();
-    }
-  });
-  </script>
+</div>
+{% endif %}
+{% endwith %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </main>
 </body>
 </html>
