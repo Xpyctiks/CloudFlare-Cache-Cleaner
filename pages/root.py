@@ -1,15 +1,15 @@
-from flask import render_template,Blueprint,current_app
+from flask import render_template,Blueprint
 import logging,requests,base64
 from cryptography.fernet import Fernet
 from flask_login import login_required,current_user
 from functions.variables import *
 from db.database import Accounts
-from functions.cache import cache
+from functions.cache import page_cache
 
 root_bp = Blueprint("root", __name__)
 @root_bp.route("/data", methods=['GET'])
 @login_required
-@cache.cached(timeout=60,key_prefix=lambda: f"user:{current_user.realname}")
+@page_cache.cached(timeout=300,key_prefix=lambda: f"user:{current_user.realname}")
 def return_mainTable():
   try:
     #header for JS filter

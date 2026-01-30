@@ -1,3 +1,3 @@
 from flask_caching import Cache
 
-cache = Cache()
+page_cache = Cache()

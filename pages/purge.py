@@ -7,7 +7,7 @@ from cryptography.fernet import Fernet
 from functions.send_to_telegram import send_to_telegram
 
 purge_bp = Blueprint("purge", __name__)
-@purge_bp.route("/purge/", methods=['POST'])
+@purge_bp.route("/purge", methods=['POST'])
 @login_required
 def purge():
   if request.method == 'POST':

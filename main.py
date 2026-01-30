@@ -7,7 +7,7 @@ from flask_login import LoginManager
 from functions.variables import *
 from functions.load_config import load_config
 from functions.cli_functions import *
-from functions.cache import cache
+from functions.cache import page_cache
 
 application = Flask(__name__)
 application.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + DB_FILE
@@ -26,7 +26,6 @@ application.config['SESSION_SQLALCHEMY'] = db
 load_config(application)
 #key to enсrypt API token in <hidden> filed to easy process of purge method
 application.secret_key = application.config["ENCRYPT_KEY"]
-logging.info(f"sadfsadfadsf2 {ENCRYPT_KEY}")
 login_manager = LoginManager()
 login_manager.login_view = "main.login.do_login"
 login_manager.session_protection = "strong"
@@ -39,7 +38,7 @@ def load_user(user_id):
   return db.session.get(User,int(user_id))
 from pages import blueprint as routes_blueprint
 application.register_blueprint(routes_blueprint)
-cache.init_app(application)
+page_cache.init_app(application)
 
 if __name__ == "__main__":
   application.app_context().push()
