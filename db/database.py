@@ -15,6 +15,7 @@ class Settings(db.Model):
   telegramToken = db.Column(db.String(64), nullable=True)
   logFile = db.Column(db.String(512), nullable=False)
   encryptKey = db.Column(db.String(64), nullable=False)
+  autheliaLogoutUrl = db.Column(db.String(512), nullable=True, default="")
 
 class User(UserMixin, db.Model):
   id = db.Column(db.Integer, primary_key=True)

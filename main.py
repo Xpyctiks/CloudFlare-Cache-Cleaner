@@ -9,6 +9,7 @@ from functions.load_config import load_config
 from functions.cli_functions import *
 from functions.cache import page_cache
 
+VERSION = "1.1.0"
 application = Flask(__name__)
 application.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + DB_FILE
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -30,6 +31,8 @@ login_manager = LoginManager()
 login_manager.login_view = "main.login.do_login"
 login_manager.session_protection = "strong"
 login_manager.init_app(application)
+from functions.authelia_auth import try_authelia_login
+application.before_request(try_authelia_login)
 with application.app_context():
   db.create_all()
 
@@ -58,6 +61,11 @@ if __name__ == "__main__":
         set_logpath(sys.argv[3].strip())
       else:
         print("Error! Enter log path")
+    elif sys.argv[1] == "set" and sys.argv[2] == "authelia":
+      if (len(sys.argv) == 4):
+        set_autheliaLogoutUrl(sys.argv[3].strip())
+      else:
+        print("Error! Enter Authelia logout URL")
     elif sys.argv[1] == "user" and sys.argv[2] == "add":
       if (len(sys.argv) == 6):
         register_user(sys.argv[3].strip(),sys.argv[4].strip(),sys.argv[5].strip())
@@ -116,6 +124,8 @@ if __name__ == "__main__":
 \tAdd Telegram Token for notifications.
 {sys.argv[0]} set logpath <new log file path>
 \tAdd Telegram Token for notifications.
+{sys.argv[0]} set authelia <logout URL>
+\tSet Authelia logout URL - used to redirect the user to Authelia's own logout endpoint on sign out.
 {sys.argv[0]} user add <login> <password> <realname>
 \tAdd new user with its password and default permissions for all cache pathes.
 {sys.argv[0]} user setpwd <user> <new password>

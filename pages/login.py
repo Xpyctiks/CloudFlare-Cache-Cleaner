@@ -52,3 +52,24 @@ def show_login_page():
     asyncio.run(send_to_telegram(f"show_login_page(): general error: {err}",f"🚒Cloud-cache-clean error by {current_user.realname}:"))
     flash(f"Неочікувана помилка при GET запиту на сторінці /login! Дивіться логи!", 'alert alert-danger')
     return "<html><body>GENERAL ERROR! Can't even render this page!</body></hml>"
+
+@login_bp.route("/login/authelia/", methods=['GET'])
+def login_via_authelia():
+  """GET request: entry point protected by reverse-proxy forward-auth (auth_request).
+  Nginx must enforce Authelia authentication on this exact location (not the optional/pass-through
+  mode used for /login/), so an unauthenticated browser gets redirected to the Authelia portal first
+  and only reaches this handler once the Remote-User header is set."""
+  try:
+    ip = request.remote_addr
+    real_ip = request.headers.get('X-Real-IP', '-.-.-.-')
+    if current_user.is_authenticated:
+      logging.info(f">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>User {current_user.realname} logged in via Authelia. IP:{ip}, Real-IP:{real_ip}")
+      return redirect('/',302)
+    logging.warning(f">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>login_via_authelia(): Reached without a valid Remote-User header. IP:{ip}, Real-IP:{real_ip}")
+    flash('Не вдалося увійти через Authelia. Перевірте налаштування reverse-proxy.', 'alert alert-danger')
+    return redirect('/login/',302)
+  except Exception as err:
+    logging.error(f">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>login_via_authelia(): general error: {err}")
+    asyncio.run(send_to_telegram(f"login_via_authelia(): general error: {err}",f"🚒Cloud-cache-clean login error:"))
+    flash(f"Неочікувана помилка при вході через Authelia! Дивіться логи!", 'alert alert-danger')
+    return redirect('/login/',302)

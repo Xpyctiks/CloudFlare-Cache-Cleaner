@@ -38,6 +38,18 @@ def set_logpath(logpath: str) -> None:
   except Exception as err:
     pass
 
+def set_autheliaLogoutUrl(url: str) -> None:
+  """CLI only function: sets Authelia logout URL value in database"""
+  t = Settings(id=1,autheliaLogoutUrl=url)
+  db.session.merge(t)
+  db.session.commit()
+  updated = db.session.get(Settings, 1)
+  print(f"Authelia logout URL updated successfully. New value: \"{updated.autheliaLogoutUrl}\"")
+  try:
+    logging.info(f"Authelia logout URL updated to \"{updated.autheliaLogoutUrl}\"")
+  except Exception as err:
+    pass
+
 def register_user(username: str,password: str,realname: str) -> None:
   """CLI only function: adds new user and saves to database"""
   try:

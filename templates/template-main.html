@@ -39,6 +39,19 @@
           <select id="accountFilter" class="form-select form-select">
         </select>
       </div>
+      <div class="ms-3">
+        <div class="dropdown">
+          <button class="btn btn-outline-light dropdown-toggle" type="button" id="appMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+            Меню
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="appMenuButton">
+            <li><a class="dropdown-item" href="/logs/">Показати логи</a></li>
+            {% if 'ADMIN' in (current_user.rights or '').upper() or '255' in (current_user.rights or '') %}
+            <li><a class="dropdown-item" href="/admin_panel/users/">Адмін панель</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
       <div class="ms-auto d-flex align-items-center">
         <form action="/logout/" method="POST">
           <button class="btn btn-outline-warning" type="submit" id="logoutButton" name="logout">🏃{{current_user.realname}}&nbsp;Вихід</button>

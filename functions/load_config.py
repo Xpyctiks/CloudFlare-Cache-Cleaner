@@ -13,7 +13,8 @@ def load_config(application) -> None:
         "TELEGRAM_TOKEN": f"{config.telegramToken}",
         "TELEGRAM_CHATID": f"{config.telegramChat}",
         "LOG_FILE": f"{config.logFile}",
-        "ENCRYPT_KEY": f"{config.encryptKey}"
+        "ENCRYPT_KEY": f"{config.encryptKey}",
+        "AUTHELIA_LOGOUT_URL": f"{config.autheliaLogoutUrl or ''}"
       })
       logging.basicConfig(filename=application.config["LOG_FILE"],level=logging.INFO,format='%(asctime)s - Cloudflare-Cache-Cleaner - %(levelname)s - %(message)s',datefmt='%d-%m-%Y %H:%M:%S')
       logging.getLogger('werkzeug').setLevel(logging.WARNING)
@@ -33,6 +34,7 @@ def generate_default_config(application) -> None:
         telegramToken = "",
         logFile = "/var/log/cloudflare-cache-cleaner.log",
         encryptKey = session_key,
+        autheliaLogoutUrl = "",
         )
       try:
         if not os.path.exists(CONFIG_DIR):
