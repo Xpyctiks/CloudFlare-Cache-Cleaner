@@ -15,7 +15,7 @@
 <main>
 <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
   <div class="container-fluid">
-    <a class="navbar-brand" href="/">Cloudflare cache cleaner</a>
+    <a class="navbar-brand" href="/">Швидка очистка кешу Cloudflare для доменів</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -36,6 +36,13 @@
 <div class="container-fluid px-3">
   <div class="row justify-content-center">
     <div class="col-12 table-wrap">
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><a class="nav-link {% if page == 'users' %}active{% endif %}" href="/admin_panel/users/">Користувачі</a></li>
+        <li class="nav-item"><a class="nav-link {% if page == 'settings' %}active{% endif %}" href="/admin_panel/settings/">Налаштування</a></li>
+        <li class="nav-item"><a class="nav-link {% if page == 'accounts' %}active{% endif %}" href="/admin_panel/accounts/">Аккаунти Cloudflare</a></li>
+      </ul>
+
+      {% if page == 'users' %}
       <div class="card mb-4">
         <div class="card-header">Список користувачів</div>
         <div class="card-body p-0">
@@ -105,6 +112,96 @@
           </form>
         </div>
       </div>
+      {% endif %}
+
+      {% if page == 'settings' %}
+      <div class="card mb-4">
+        <div class="card-header">Загальні налаштування</div>
+        <div class="card-body">
+          <form action="/admin_panel/settings/" method="POST" class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Telegram Chat ID</label>
+              <input class="form-control" name="telegramChat" value="{{ settings.telegramChat or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Telegram Token</label>
+              <input class="form-control" name="telegramToken" value="{{ settings.telegramToken or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Шлях до лог-файлу</label>
+              <input class="form-control" name="logFile" value="{{ settings.logFile or '' }}" required>
+              <div class="form-text">Зміна шляху застосується повністю лише після перезапуску застосунку.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ключ шифрування</label>
+              <input class="form-control" name="encryptKey" value="{{ settings.encryptKey or '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Authelia Logout URL</label>
+              <input class="form-control" name="autheliaLogoutUrl" value="{{ settings.autheliaLogoutUrl or '' }}">
+            </div>
+            <div class="col-12">
+              <button type="submit" name="buttonSaveSettings" class="btn btn-success">Зберегти налаштування</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if page == 'accounts' %}
+      <div class="card mb-4">
+        <div class="card-header">Аккаунти Cloudflare</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover mb-0">
+              <thead class="table-warning">
+                <tr>
+                  <th>ID</th>
+                  <th>Назва</th>
+                  <th>Токен</th>
+                  <th>Створено</th>
+                  <th>Дії</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for account in accounts %}
+                <tr>
+                  <td>{{ account.id }}</td>
+                  <td>{{ account.name }}</td>
+                  <td><details><summary>Показати</summary>{{ account.token }}</details></td>
+                  <td>{{ account.created.strftime('%d.%m.%Y %H:%M:%S') if account.created else '---' }}</td>
+                  <td>
+                    <form action="/admin_panel/accounts/" method="POST" class="d-inline">
+                      <button type="submit" name="buttonDeleteAccount" value="{{ account.id }}" class="btn btn-sm btn-outline-danger">Видалити</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header">Додати новий аккаунт Cloudflare</div>
+        <div class="card-body">
+          <form action="/admin_panel/accounts/" method="POST" class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Назва</label>
+              <input class="form-control" name="new-account-name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">API токен</label>
+              <input class="form-control" name="new-account-token" required>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="submit" name="buttonAddAccount" class="btn btn-success w-100">Додати</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>

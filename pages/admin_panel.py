@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, flash
+from flask import Blueprint, render_template, request, redirect, flash, current_app
 from flask_login import login_required, current_user
 import logging
 from werkzeug.security import generate_password_hash
-from db.database import User
+from db.database import User, Settings, Accounts
 from db.db import db
 from functions.rights_required import rights_required
 from functions.site_actions import is_admin
@@ -80,8 +80,90 @@ def admin_panel_users():
           flash('Помилка при збереженні користувача.', 'alert alert-danger')
         return redirect('/admin_panel/users/', 302)
     users = User.query.order_by(User.username).all()
-    return render_template('template-admin_panel.html', users=users, active_users='active', admin_panel=is_admin())
+    return render_template('template-admin_panel.html', page='users', users=users, admin_panel=is_admin())
   except Exception as err:
     logging.error(f'admin_panel_users(): global error {err}')
+    flash('Неочікувана помилка адмін-панелі.', 'alert alert-danger')
+    return redirect('/', 302)
+
+@admin_panel_bp.route("/admin_panel/settings/", methods=['GET', 'POST'])
+@login_required
+@rights_required()
+def admin_panel_settings():
+  try:
+    if request.method == 'POST':
+      if 'buttonSaveSettings' in request.form:
+        telegram_chat = request.form.get('telegramChat', '').strip()
+        telegram_token = request.form.get('telegramToken', '').strip()
+        log_file = request.form.get('logFile', '').strip()
+        encrypt_key = request.form.get('encryptKey', '').strip()
+        authelia_logout_url = request.form.get('autheliaLogoutUrl', '').strip()
+        if not log_file or not encrypt_key:
+          flash('Шлях до лог-файлу та ключ шифрування обов’язкові.', 'alert alert-warning')
+          return redirect('/admin_panel/settings/', 302)
+        settings = db.session.get(Settings, 1)
+        settings.telegramChat = telegram_chat
+        settings.telegramToken = telegram_token
+        settings.logFile = log_file
+        settings.encryptKey = encrypt_key
+        settings.autheliaLogoutUrl = authelia_logout_url
+        db.session.commit()
+        current_app.config.update({
+          "TELEGRAM_TOKEN": telegram_token,
+          "TELEGRAM_CHATID": telegram_chat,
+          "LOG_FILE": log_file,
+          "ENCRYPT_KEY": encrypt_key,
+          "AUTHELIA_LOGOUT_URL": authelia_logout_url
+        })
+        flash('Налаштування збережено. Зміна шляху до лог-файлу застосується повністю лише після перезапуску застосунку.', 'alert alert-success')
+      return redirect('/admin_panel/settings/', 302)
+    settings = db.session.get(Settings, 1)
+    return render_template('template-admin_panel.html', page='settings', settings=settings, admin_panel=is_admin())
+  except Exception as err:
+    logging.error(f'admin_panel_settings(): global error {err}')
+    flash('Неочікувана помилка адмін-панелі.', 'alert alert-danger')
+    return redirect('/', 302)
+
+@admin_panel_bp.route("/admin_panel/accounts/", methods=['GET', 'POST'])
+@login_required
+@rights_required()
+def admin_panel_accounts():
+  try:
+    if request.method == 'POST':
+      if 'buttonDeleteAccount' in request.form:
+        account_id = request.form.get('buttonDeleteAccount')
+        account = Accounts.query.get(int(account_id)) if account_id and account_id.isdigit() else None
+        if account:
+          db.session.delete(account)
+          db.session.commit()
+          flash(f'Аккаунт {account.name} видалено.', 'alert alert-success')
+        else:
+          flash('Аккаунт не знайдено.', 'alert alert-danger')
+        return redirect('/admin_panel/accounts/', 302)
+      if 'buttonAddAccount' in request.form:
+        name = request.form.get('new-account-name', '').strip()
+        token = request.form.get('new-account-token', '').strip()
+        if not name or not token:
+          flash('Назва аккаунта та токен обов’язкові.', 'alert alert-warning')
+          return redirect('/admin_panel/accounts/', 302)
+        if Accounts.query.filter_by(name=name).first():
+          flash(f'Аккаунт {name} вже існує.', 'alert alert-warning')
+          return redirect('/admin_panel/accounts/', 302)
+        if Accounts.query.filter_by(token=token).first():
+          flash('Аккаунт з таким токеном вже існує.', 'alert alert-warning')
+          return redirect('/admin_panel/accounts/', 302)
+        new_account = Accounts(name=name, token=token)
+        db.session.add(new_account)
+        try:
+          db.session.commit()
+          flash(f'Аккаунт {name} створено.', 'alert alert-success')
+        except IntegrityError:
+          db.session.rollback()
+          flash('Помилка при збереженні аккаунта.', 'alert alert-danger')
+        return redirect('/admin_panel/accounts/', 302)
+    accounts = Accounts.query.order_by(Accounts.name).all()
+    return render_template('template-admin_panel.html', page='accounts', accounts=accounts, admin_panel=is_admin())
+  except Exception as err:
+    logging.error(f'admin_panel_accounts(): global error {err}')
     flash('Неочікувана помилка адмін-панелі.', 'alert alert-danger')
     return redirect('/', 302)
