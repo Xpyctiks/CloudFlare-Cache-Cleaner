@@ -22,7 +22,7 @@ def return_mainTable():
     CF_ACCOUNTS = [ {"Name": acc.name, "Token": acc.token} for acc in Accounts.query.all()]
     accounts_menu = "\n<!-- MENU_START -->\n<option value="">👤 Всі аккаунти</option>"
     for account in CF_ACCOUNTS:
-      if account['Name'] in permissions_list or "*" in permissions_list:
+      if account['Name'] in permissions_list or "*" or "255" in permissions_list:
         headers = {
           'Authorization': f"Bearer {account['Token']}",
           'Content-Type':  'application/json'
