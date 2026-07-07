@@ -4,11 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Адмін панель</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" crossorigin="anonymous">
+  <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}" crossorigin="anonymous" defer></script>
   <style>
     body { padding-top: 75px; }
     .table-wrap { max-width: 95vw; }
+    .account-name-edit { display: inline-block; min-width: 4em; padding: 2px 4px; border-radius: 4px; border: 1px dashed transparent; cursor: text; }
+    .account-name-edit:hover, .account-name-edit:focus { border-color: #adb5bd; outline: none; background-color: #fff8e1; }
   </style>
 </head>
 <body>
@@ -41,7 +43,6 @@
         <li class="nav-item"><a class="nav-link {% if page == 'settings' %}active{% endif %}" href="/admin_panel/settings/">Налаштування</a></li>
         <li class="nav-item"><a class="nav-link {% if page == 'accounts' %}active{% endif %}" href="/admin_panel/accounts/">Аккаунти Cloudflare</a></li>
       </ul>
-
       {% if page == 'users' %}
       <div class="card mb-4">
         <div class="card-header">Список користувачів</div>
@@ -81,7 +82,6 @@
           </div>
         </div>
       </div>
-
       <div class="card mb-4">
         <div class="card-header">Створити нового користувача</div>
         <div class="card-body">
@@ -113,7 +113,6 @@
         </div>
       </div>
       {% endif %}
-
       {% if page == 'settings' %}
       <div class="card mb-4">
         <div class="card-header">Загальні налаштування</div>
@@ -147,7 +146,6 @@
         </div>
       </div>
       {% endif %}
-
       {% if page == 'accounts' %}
       <div class="card mb-4">
         <div class="card-header">Аккаунти Cloudflare</div>
@@ -167,7 +165,9 @@
                 {% for account in accounts %}
                 <tr>
                   <td>{{ account.id }}</td>
-                  <td>{{ account.name }}</td>
+                  <td>
+                    <span class="account-name-edit" contenteditable="true" spellcheck="false" data-account-id="{{ account.id }}" data-original-name="{{ account.name }}">{{ account.name }}</span>
+                  </td>
                   <td><details><summary>Показати</summary>{{ account.token }}</details></td>
                   <td>{{ account.created.strftime('%d.%m.%Y %H:%M:%S') if account.created else '---' }}</td>
                   <td>
@@ -182,7 +182,6 @@
           </div>
         </div>
       </div>
-
       <div class="card mb-4">
         <div class="card-header">Додати новий аккаунт Cloudflare</div>
         <div class="card-body">
@@ -205,7 +204,6 @@
     </div>
   </div>
 </div>
-
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
 <div class="modal fade" id="flashModal" tabindex="-1" aria-hidden="true">
@@ -230,16 +228,7 @@
 </div>
 {% endif %}
 {% endwith %}
-
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var modalEl = document.getElementById('flashModal');
-    if (modalEl) {
-      var modal = new bootstrap.Modal(modalEl);
-      modal.show();
-    }
-  });
-</script>
+<script src="{{ url_for('static', filename='js/admin_panel.js') }}"></script>
 </main>
 </body>
 </html>

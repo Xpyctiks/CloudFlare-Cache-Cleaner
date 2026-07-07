@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, flash, current_app
+import re
+from flask import Blueprint, render_template, request, redirect, flash, current_app, jsonify
 from flask_login import login_required, current_user
 import logging
 from werkzeug.security import generate_password_hash
@@ -9,6 +10,9 @@ from functions.site_actions import is_admin
 from sqlalchemy.exc import IntegrityError
 
 admin_panel_bp = Blueprint("admin_panel", __name__)
+
+def natural_sort_key(text):
+  return [int(chunk) if chunk.isdigit() else chunk.lower() for chunk in re.split(r'(\d+)', text or '')]
 
 @admin_panel_bp.route("/admin_panel/", methods=['GET'])
 @login_required
@@ -161,9 +165,32 @@ def admin_panel_accounts():
           db.session.rollback()
           flash('Помилка при збереженні аккаунта.', 'alert alert-danger')
         return redirect('/admin_panel/accounts/', 302)
-    accounts = Accounts.query.order_by(Accounts.name).all()
+    accounts = sorted(Accounts.query.all(), key=lambda acc: natural_sort_key(acc.name))
     return render_template('template-admin_panel.html', page='accounts', accounts=accounts, admin_panel=is_admin())
   except Exception as err:
     logging.error(f'admin_panel_accounts(): global error {err}')
     flash('Неочікувана помилка адмін-панелі.', 'alert alert-danger')
     return redirect('/', 302)
+
+@admin_panel_bp.route("/admin_panel/accounts/rename", methods=['POST'])
+@login_required
+@rights_required()
+def admin_panel_accounts_rename():
+  try:
+    data = request.get_json(silent=True) or {}
+    account_id = data.get('id')
+    new_name = (data.get('name') or '').strip()
+    account = Accounts.query.get(int(account_id)) if str(account_id or '').isdigit() else None
+    if not account:
+      return jsonify(success=False, message='Аккаунт не знайдено.'), 404
+    if not new_name:
+      return jsonify(success=False, message='Назва не може бути порожньою.'), 400
+    if new_name != account.name and Accounts.query.filter_by(name=new_name).first():
+      return jsonify(success=False, message=f'Аккаунт {new_name} вже існує.'), 400
+    account.name = new_name
+    db.session.commit()
+    return jsonify(success=True, name=account.name)
+  except Exception as err:
+    logging.error(f'admin_panel_accounts_rename(): global error {err}')
+    db.session.rollback()
+    return jsonify(success=False, message='Неочікувана помилка.'), 500
