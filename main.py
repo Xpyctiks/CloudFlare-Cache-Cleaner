@@ -9,7 +9,7 @@ from functions.load_config import load_config
 from functions.cli_functions import *
 from functions.cache import page_cache
 
-VERSION = "1.1.0"
+VERSION = "1.1.2"
 application = Flask(__name__)
 application.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + DB_FILE
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
